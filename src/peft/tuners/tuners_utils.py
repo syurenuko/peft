@@ -396,11 +396,13 @@ class BaseTuner(nn.Module, ABC):
         self._prepare_model(peft_config, model)
         is_target_modules_in_base_model = False
         key_list = [key for key, _ in model.named_modules()]
+        not_found_target_modules = set(peft_config.target_modules) if hasattr(peft_config, "target_modules") else set()
 
         if getattr(peft_config, "target_modules", None) == DUMMY_TARGET_MODULES:
             # dummy adapter, we allow not matching any module
             key_list = []
             is_target_modules_in_base_model = True
+            not_found_target_modules = set()
 
         # update peft_config.target_modules if required
         peft_config = _maybe_include_all_linear_layers(peft_config, model)
@@ -427,8 +429,18 @@ class BaseTuner(nn.Module, ABC):
 
             self.targeted_module_names.append(key)
             is_target_modules_in_base_model = True
+            if key in not_found_target_modules:
+                not_found_target_modules.remove(key)
             parent, target, target_name = _get_submodules(model, key)
             self._create_and_replace(peft_config, adapter_name, target, target_name, parent, current_key=key)
+    
+        # Check if there are any target modules that were not found in the model and warn the user if any are missing 
+        if not_found_target_modules:
+            warnings.warn(
+                f"The following target modules were not found in the base model: {not_found_target_modules}. "
+                "This may indicate a configuration issue.",
+            UserWarning
+        )
 
         # Handle X-LoRA case.
         if not is_target_modules_in_base_model and hasattr(peft_config, "target_modules"):
