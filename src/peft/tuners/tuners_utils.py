@@ -433,14 +433,13 @@ class BaseTuner(nn.Module, ABC):
                 not_found_target_modules.remove(key)
             parent, target, target_name = _get_submodules(model, key)
             self._create_and_replace(peft_config, adapter_name, target, target_name, parent, current_key=key)
-    
-        # Check if there are any target modules that were not found in the model and warn the user if any are missing 
+
+        # Check if there are any target modules that were not found in the model and warn the user if any are missing
         if not_found_target_modules:
             warnings.warn(
-                f"The following target modules were not found in the base model: {not_found_target_modules}. "
-                "This may indicate a configuration issue.",
-            UserWarning
-        )
+                f"The following target modules were not found in the base model: {not_found_target_modules}. ",
+                UserWarning,
+            )
 
         # Handle X-LoRA case.
         if not is_target_modules_in_base_model and hasattr(peft_config, "target_modules"):
